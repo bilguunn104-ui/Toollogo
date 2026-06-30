@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тооллогын систем</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#10151c; --panel:#171f29; --panel-2:#1d2733; --line:#2a3542;
+    --amber:#ff9f40; --amber-dim:#7a5328; --text:#e8edf3; --text-dim:#8e9bab;
+    --green:#5bc28a; --red:#e0626a;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-tap-highlight-color:transparent;}
+  .app{max-width:720px;margin:0 auto;padding:14px 14px 60px;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:10px 2px 16px;border-bottom:1px solid var(--line);margin-bottom:14px;}
+  header .mark{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--amber);text-transform:uppercase;}
+  header h1{font-size:17px;margin:2px 0 0;font-weight:600;}
+  .conn{display:flex;align-items:center;gap:6px;font-size:11px;font-family:var(--mono);color:var(--text-dim);}
+  .conn .dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);}
+  .conn.ok .dot{background:var(--green);}
+  .conn.bad .dot{background:var(--red);}
+  .banner{display:none;background:#2a1518;border:1px solid #5a2730;color:#ffb3ba;padding:10px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;line-height:1.5;}
+  .banner.show{display:block;}
+  nav{display:flex;gap:6px;margin-bottom:16px;}
+  nav button{flex:1;padding:9px 6px;background:var(--panel);border:1px solid var(--line);color:var(--text-dim);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  nav button.active{background:var(--amber-dim);border-color:var(--amber);color:#ffd9ad;}
+  section{display:none;}
+  section.active{display:block;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin:0 0 10px;font-weight:600;}
+  label{display:block;font-size:12px;color:var(--text-dim);margin:10px 0 4px;}
+  select,input[type=text],input[type=number],textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:7px;font-size:14px;font-family:var(--sans);}
+  textarea{font-family:var(--mono);font-size:12px;min-height:110px;resize:vertical;}
+  input[type=number]{font-family:var(--mono);font-size:18px;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--amber);color:#1a1206;border:none;padding:10px 16px;border-radius:7px;font-weight:700;font-size:14px;cursor:pointer;width:100%;margin-top:10px;}
+  .btn:disabled{opacity:.55;cursor:default;}
+  .btn.secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--line);}
+  .btn.danger{background:var(--panel-2);color:var(--red);border:1px solid #4a2226;}
+  .btn.link{background:none;color:var(--amber);text-decoration:underline;width:auto;padding:4px 0;}
+  .row{display:flex;gap:8px;}
+  .row > *{flex:1;}
+  #reader{width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin-top:10px;}
+  .scan-result{margin-top:10px;padding:10px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);display:none;}
+  .scan-result.show{display:block;}
+  .scan-result .name{font-weight:700;font-size:15px;}
+  .scan-result .meta{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px;}
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .list-item:last-child{border-bottom:none;}
+  .list-item .li-name{font-weight:600;}
+  .list-item .li-meta{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:2px;}
+  .list-item .li-qty{font-family:var(--mono);font-weight:700;color:var(--amber);font-size:15px;white-space:nowrap;}
+  .empty{color:var(--text-dim);font-size:13px;text-align:center;padding:20px 0;}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--panel-2);border:1px solid var(--line);padding:3px 8px;border-radius:20px;color:var(--text-dim);margin-right:6px;}
+  .stat{display:flex;gap:10px;margin-bottom:10px;}
+  .stat .box{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center;}
+  .stat .box .num{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--amber);}
+  .stat .box .lbl{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+  .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--panel-2);border:1px solid var(--amber);color:var(--text);padding:9px 16px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;}
+  .toast.err{border-color:var(--red);}
+  .hint{font-size:11.5px;color:var(--text-dim);line-height:1.5;margin-top:4px;}
+  .branch-tag{font-family:var(--mono);font-size:11px;color:var(--green);border:1px solid #244a35;background:#13241a;padding:4px 10px;border-radius:6px;display:inline-block;margin-bottom:10px;}
+  .branch-group{margin-bottom:14px;}
+  .branch-group h3{font-size:12px;font-family:var(--mono);color:var(--amber);margin:0 0 6px;padding-bottom:6px;border-bottom:1px dashed var(--line);}
+  .setup-screen{max-width:480px;margin:60px auto;padding:0 14px;}
+</style>
+</head>
+<body>
+
+<!-- FIRST-TIME SETUP SCREEN: shown until an API URL is provided -->
+<div class="setup-screen" id="setupScreen">
+  <div class="card">
+    <h2>API URL тохируулах</h2>
+    <p class="hint">Google Apps Script-аа Deploy хийгээд гарч ирсэн URL-аа (".../exec" гэж төгсдөг) доор буулгана уу. Энэ нь зөвхөн энэ нэг удаагийн ачаалалтад хадгалагдана — хуудсыг дахин нээх бүрт дахин оруулах шаардлагатай тул байнга ашиглах бол энэ HTML файлын эхэнд байгаа `DEFAULT_API_URL` хувьсагч руу шууд бичиж хадгалаарай.</p>
+    <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/XXXXXXXX/exec">
+    <button class="btn" id="apiUrlSaveBtn">Холбогдох</button>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none;">
+  <header>
+    <div>
+      <div class="mark">Барааны хяналт · Google Sheets</div>
+      <h1>Тооллогын систем</h1>
+    </div>
+    <div class="conn" id="connIndicator"><div class="dot"></div><span id="connLabel">Шалгаж байна…</span></div>
+  </header>
+
+  <div class="banner" id="connBanner"></div>
+
+  <nav>
+    <button data-tab="admin" class="active">Админ</button>
+    <button data-tab="scan">Тооллого</button>
+    <button data-tab="report">Тайлан</button>
+  </nav>
+
+  <!-- ADMIN -->
+  <section id="admin" class="active">
+    <div class="card">
+      <h2>Салбарууд</h2>
+      <div id="branchList"></div>
+      <div class="row" style="margin-top:8px;">
+        <input type="text" id="newBranchName" placeholder="Шинэ салбарын нэр">
+        <button class="btn secondary" style="width:auto;flex:0 0 auto;padding:9px 14px;margin-top:0;" id="addBranchBtn">+ Нэмэх</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Барааны жагсаалт импорт</h2>
+      <p class="hint">Мөр бүрт: <b>Код [Tab] Нэр [Tab] Нэгж [Tab] Баркод</b>. Excel-ээс хуулж шууд буулгана.</p>
+      <textarea id="productImport" placeholder="A001	Цагаан футболк	ширхэг	8800001234567"></textarea>
+      <button class="btn" id="importBtn">Жагсаалт хадгалах (хуучныг сольно)</button>
+      <button class="btn secondary" id="appendBtn">Нэмж хадгалах (одоогийнд нэмнэ)</button>
+      <div class="hint" id="productCount"></div>
+    </div>
+
+    <div class="card">
+      <h2>Google Sheet</h2>
+      <p class="hint">Бүх өгөгдөл доорх линктэй Google Sheet дээр шууд хадгалагдаж байгаа тул хүссэн үедээ нээгээд Excel болгон татаж, шүүлт хийж, pivot хийж болно.</p>
+      <button class="btn link" id="openSheetBtn">📊 Sheet-ийг нээх →</button>
+    </div>
+  </section>
+
+  <!-- SCAN -->
+  <section id="scan">
+    <div class="card">
+      <h2>Салбараа сонгох</h2>
+      <select id="branchSelect"></select>
+    </div>
+
+    <div class="card" id="scanCard" style="display:none;">
+      <div class="branch-tag" id="activeBranchTag"></div>
+      <h2>Баркод унших</h2>
+      <button class="btn" id="startScanBtn">📷 Камер нээх / Баркод уншуулах</button>
+      <button class="btn secondary" id="stopScanBtn" style="display:none;">Камер хаах</button>
+      <div id="reader" style="display:none;"></div>
+
+      <label>Эсвэл баркод/код гараар оруулах (Enter дарна)</label>
+      <input type="text" id="manualBarcode" placeholder="Баркод эсвэл барааны код">
+
+      <div class="scan-result" id="scanResult">
+        <div class="name" id="srName">—</div>
+        <div class="meta" id="srMeta">—</div>
+        <div class="row" style="margin-top:8px;">
+          <input type="number" id="srQty" placeholder="Тоо хэмжээ" inputmode="decimal">
+          <button class="btn" style="margin-top:0;width:auto;flex:0 0 auto;padding:9px 16px;" id="srAddBtn">Бүртгэх</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;background:var(--panel-2);">
+        <h2>Энэ салбарт энэ сард тоолсон <span id="countedQty" class="pill">0</span></h2>
+        <div id="branchCountList"><div class="empty">Хараахан юу ч тоологдоогүй байна</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT -->
+  <section id="report">
+    <div class="card">
+      <label>Харах сар</label>
+      <select id="cycleSelect"></select>
+    </div>
+    <div class="card">
+      <h2>Тооллогын явц</h2>
+      <div class="stat">
+        <div class="box"><div class="num" id="statBranches">0</div><div class="lbl">Салбар тоологдсон</div></div>
+        <div class="box"><div class="num" id="statItems">0</div><div class="lbl">Бараа бүртгэгдсэн</div></div>
+        <div class="box"><div class="num" id="statQty">0</div><div class="lbl">Нийт тоо</div></div>
+      </div>
+      <button class="btn secondary" id="refreshReportBtn">Шинэчлэх</button>
+      <button class="btn" id="exportBtn">⬇ Excel (CSV) татах</button>
+      <div id="reportTable" style="margin-top:10px;"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ЭНД ӨӨРИЙН Apps Script Deploy URL-аа бичээд хадгалбал хуудас нээгдэх бүрт
+// дахин оруулах шаардлагагүй болно: жишээ нь
+// const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycb.../exec";
+const DEFAULT_API_URL = "";
+
+let API_URL = DEFAULT_API_URL;
+const $ = id => document.getElementById(id);
+let products = [];
+let branches = [];
+let currentBranch = null;
+let html5QrCode = null;
+let scanning = false;
+
+// ---------- SETUP SCREEN ----------
+function boot(){
+  if(API_URL){
+    $('setupScreen').style.display = 'none';
+    $('mainApp').style.display = 'block';
+    initApp();
+  } else {
+    $('setupScreen').style.display = 'block';
+    $('mainApp').style.display = 'none';
+  }
+}
+$('apiUrlSaveBtn').addEventListener('click', ()=>{
+  const v = $('apiUrlInput').value.trim();
+  if(!v.startsWith('https://script.google.com/')){ showToast('Зөв URL биш байна', true); return; }
+  API_URL = v;
+  boot();
+});
+boot();
+
+// ---------- API HELPERS ----------
+async function apiGet(action, params){
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  Object.entries(params||{}).forEach(([k,v])=>url.searchParams.set(k,v));
+  const res = await fetch(url.toString());
+  const json = await res.json();
+  if(!json.success) throw new Error(json.error || 'Тодорхойгүй алдаа');
+  return json.data;
+}
+async function apiPost(action, payload){
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // avoids CORS preflight
+    body: JSON.stringify(Object.assign({action}, payload||{}))
+  });
+  const json = await res.json();
+  if(!json.success) throw new Error(json.error || 'Тодорхойгүй алдаа');
+  return json.data;
+}
+
+function showToast(msg, isErr){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function setBusy(btn, busy, busyText){
+  if(busy){
+    btn.dataset._label = btn.dataset._label || btn.textContent;
+    btn.textContent = busyText || 'Хадгалж байна…';
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn.dataset._label || btn.textContent;
+    btn.disabled = false;
+  }
+}
+function setConn(state, msg){
+  const ind = $('connIndicator');
+  ind.classList.remove('ok','bad');
+  if(state) ind.classList.add(state);
+  $('connLabel').textContent = msg;
+  const banner = $('connBanner');
+  if(state === 'bad'){
+    banner.textContent = '⚠ API URL-тай холбогдож чадахгүй байна. Deploy URL зөв эсэхээ, "Anyone" эрхтэй эсэхээ шалгана уу.';
+    banner.classList.add('show');
+  } else { banner.classList.remove('show'); }
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function initNav(){
+  document.querySelectorAll('nav button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('section').forEach(s=>s.classList.remove('active'));
+      btn.classList.add('active');
+      $(btn.dataset.tab).classList.add('active');
+      if(btn.dataset.tab === 'report'){ loadCycles().then(refreshReport); }
+      if(btn.dataset.tab === 'scan') renderBranchSelect();
+    });
+  });
+}
+
+// ---------- PRODUCTS ----------
+async function loadProducts(){
+  products = await apiGet('getProducts');
+  $('productCount').textContent = products.length ? `Одоогоор ${products.length} нэр төрлийн бараа бүртгэлтэй байна.` : 'Барааны жагсаалт хоосон байна.';
+}
+function parseProductText(text){
+  return text.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const parts = line.split('\t').length > 1 ? line.split('\t') : line.split(',');
+    const [code='', name='', unit='', barcode=''] = parts.map(p=>p.trim());
+    return {code, name, unit, barcode};
+  }).filter(p=>p.barcode || p.code);
+}
+function initProductHandlers(){
+  $('importBtn').addEventListener('click', async ()=>{
+    const btn = $('importBtn');
+    const text = $('productImport').value;
+    if(!text.trim()){ showToast('Жагсаалтаа буулгана уу', true); return; }
+    setBusy(btn, true);
+    try{
+      products = await apiPost('saveProducts', { rows: parseProductText(text) });
+      $('productImport').value = '';
+      $('productCount').textContent = `Одоогоор ${products.length} нэр төрлийн бараа бүртгэлтэй байна.`;
+      showToast(`${products.length} бараа хадгалагдлаа`);
+    }catch(err){ showToast('Алдаа: ' + err.message, true); }
+    finally{ setBusy(btn, false); }
+  });
+  $('appendBtn').addEventListener('click', async ()=>{
+    const btn = $('appendBtn');
+    const text = $('productImport').value;
+    if(!text.trim()){ showToast('Жагсаалтаа буулгана уу', true); return; }
+    setBusy(btn, true);
+    try{
+      products = await apiPost('appendProducts', { rows: parseProductText(text) });
+      $('productImport').value = '';
+      $('productCount').textContent = `Одоогоор ${products.length} нэр төрлийн бараа бүртгэлтэй байна.`;
+      showToast(`Жагсаалт шинэчлэгдлээ, нийт ${products.length} бараа`);
+    }catch(err){ showToast('Алдаа: ' + err.message, true); }
+    finally{ setBusy(btn, false); }
+  });
+}
+
+// ---------- BRANCHES ----------
+async function loadBranches(){
+  branches = await apiGet('getBranches');
+  renderBranchList();
+  renderBranchSelect();
+}
+function renderBranchList(){
+  const el = $('branchList');
+  if(!branches.length){ el.innerHTML = '<div class="empty">Салбар бүртгэгдээгүй байна</div>'; return; }
+  el.innerHTML = branches.map(b => `
+    <div class="list-item">
+      <div class="li-name">${escapeHtml(b)}</div>
+      <button class="btn danger" style="width:auto;margin:0;padding:5px 10px;font-size:12px;" data-branch="${escapeHtml(b)}">Устгах</button>
+    </div>`).join('');
+  el.querySelectorAll('button[data-branch]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      setBusy(btn, true, '...');
+      try{ branches = await apiPost('deleteBranch', { name: btn.dataset.branch }); renderBranchList(); renderBranchSelect(); showToast('Салбар хасагдлаа'); }
+      catch(err){ showToast('Алдаа: ' + err.message, true); setBusy(btn, false); }
+    });
+  });
+}
+function renderBranchSelect(){
+  const sel = $('branchSelect');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Салбараа сонгоно уу —</option>' + branches.map(b=>`<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+  if(branches.includes(prev)) sel.value = prev;
+}
+function initBranchHandlers(){
+  $('addBranchBtn').addEventListener('click', async ()=>{
+    const btn = $('addBranchBtn');
+    const name = $('newBranchName').value.trim();
+    if(!name){ showToast('Салбарын нэрээ оруулна уу', true); return; }
+    setBusy(btn, true);
+    try{
+      branches = await apiPost('addBranch', { name });
+      $('newBranchName').value = '';
+      renderBranchList(); renderBranchSelect();
+      showToast('Салбар нэмэгдлээ');
+    }catch(err){ showToast('Алдаа: ' + err.message, true); }
+    finally{ setBusy(btn, false); }
+  });
+  $('openSheetBtn').addEventListener('click', async ()=>{
+    try{ const url = await apiGet('getSpreadsheetUrl'); window.open(url, '_blank'); }
+    catch(err){ showToast('Алдаа: ' + err.message, true); }
+  });
+}
+
+// ---------- SCAN ----------
+function initScanHandlers(){
+  $('branchSelect').addEventListener('change', async (e)=>{
+    currentBranch = e.target.value || null;
+    if(currentBranch){
+      $('scanCard').style.display = 'block';
+      $('activeBranchTag').textContent = '📍 ' + currentBranch;
+      await loadBranchCounts();
+    } else { $('scanCard').style.display = 'none'; }
+  });
+  $('manualBarcode').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter' && $('manualBarcode').value.trim()) showScanResult($('manualBarcode').value.trim());
+  });
+  $('srAddBtn').addEventListener('click', async (e)=>{
+    e.preventDefault();
+    const btn = $('srAddBtn');
+    if(!currentBranch){ showToast('Эхлээд салбараа сонгоно уу', true); return; }
+    const qtyRaw = $('srQty').value;
+    const qty = parseFloat(qtyRaw);
+    if(qtyRaw === '' || isNaN(qty)){ showToast('Тоо хэмжээгээ оруулна уу', true); return; }
+    const d = btn.dataset;
+    const item = { code:d.code, name:d.name, unit:d.unit, barcode:d.barcode };
+    setBusy(btn, true);
+    try{
+      await apiPost('recordCount', { branch: currentBranch, item, qty });
+      $('scanResult').classList.remove('show');
+      $('manualBarcode').value = '';
+      showToast('Бүртгэгдлээ ✓');
+      await loadBranchCounts();
+    }catch(err){ showToast('Хадгалж чадсангүй: ' + err.message, true); }
+    finally{ setBusy(btn, false); btn.textContent = 'Бүртгэх'; }
+  });
+  $('startScanBtn').addEventListener('click', async ()=>{
+    if(scanning) return;
+    if(typeof Html5Qrcode === 'undefined'){ showToast('Камер сан ачаалагдсангүй.', true); return; }
+    $('reader').style.display = 'block';
+    $('startScanBtn').style.display = 'none';
+    $('stopScanBtn').style.display = 'block';
+    html5QrCode = new Html5Qrcode('reader');
+    try{
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        (decodedText)=>{ showScanResult(decodedText.trim()); if(navigator.vibrate) navigator.vibrate(80); },
+        ()=>{}
+      );
+      scanning = true;
+    }catch(err){
+      showToast('Камер нээгдсэнгүй. Зөвшөөрөл шалгана уу.', true);
+      $('reader').style.display = 'none'; $('startScanBtn').style.display = 'block'; $('stopScanBtn').style.display = 'none';
+    }
+  });
+  $('stopScanBtn').addEventListener('click', async ()=>{
+    if(html5QrCode && scanning){ await html5QrCode.stop(); html5QrCode.clear(); scanning = false; }
+    $('reader').style.display = 'none'; $('startScanBtn').style.display = 'block'; $('stopScanBtn').style.display = 'none';
+  });
+}
+async function loadBranchCounts(){
+  const cycles = await apiGet('getCycles');
+  const cur = cycles[0] || '';
+  const items = await apiGet('getBranchCurrentCounts', { branch: currentBranch, cycle: cur });
+  renderBranchCountList(items);
+}
+function renderBranchCountList(items){
+  $('countedQty').textContent = items.length;
+  const el = $('branchCountList');
+  if(!items.length){ el.innerHTML = '<div class="empty">Хараахан юу ч тоологдоогүй байна</div>'; return; }
+  el.innerHTML = items.slice().reverse().map(it => `
+    <div class="list-item">
+      <div>
+        <div class="li-name">${escapeHtml(it.name || '(нэргүй)')}</div>
+        <div class="li-meta">${escapeHtml(it.code||'')} · ${escapeHtml(it.barcode||'')}</div>
+      </div>
+      <div class="li-qty">${it.qty} ${escapeHtml(it.unit||'')}</div>
+    </div>`).join('');
+}
+function lookupProduct(code){ return products.find(p => p.barcode === code || p.code === code); }
+function showScanResult(barcode){
+  const p = lookupProduct(barcode);
+  $('scanResult').classList.add('show');
+  if(p){
+    $('srName').textContent = p.name || '(нэргүй)';
+    $('srMeta').innerHTML = `Код: ${escapeHtml(p.code)} · Нэгж: ${escapeHtml(p.unit)} · Баркод: ${escapeHtml(p.barcode)}`;
+    $('srAddBtn').dataset.code = p.code; $('srAddBtn').dataset.name = p.name;
+    $('srAddBtn').dataset.unit = p.unit; $('srAddBtn').dataset.barcode = p.barcode;
+  } else {
+    $('srName').textContent = 'Жагсаалтад олдсонгүй';
+    $('srMeta').textContent = `Уншсан код: ${escapeHtml(barcode)} — Админ хэсэгт нэмж бүртгэнэ үү`;
+    $('srAddBtn').dataset.code = barcode; $('srAddBtn').dataset.name = '';
+    $('srAddBtn').dataset.unit = ''; $('srAddBtn').dataset.barcode = barcode;
+  }
+  $('srQty').value = '';
+  $('srQty').focus();
+}
+
+// ---------- REPORT ----------
+function monthLabel(k){
+  const names=['','1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар','7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+  const [y,m]=k.split('-'); return `${y} оны ${names[parseInt(m,10)]}`;
+}
+async function loadCycles(){
+  const cycles = await apiGet('getCycles');
+  $('cycleSelect').innerHTML = cycles.map(c=>`<option value="${c}">${monthLabel(c)}</option>`).join('');
+}
+function initReportHandlers(){
+  $('cycleSelect').addEventListener('change', refreshReport);
+  $('refreshReportBtn').addEventListener('click', refreshReport);
+  $('exportBtn').addEventListener('click', ()=>{
+    const rows = window._allRows || [];
+    if(!rows.length){ showToast('Татах өгөгдөл алга байна', true); return; }
+    const cycle = $('cycleSelect').value;
+    const header = ['Салбар','Код','Нэр','Нэгж','Баркод','Тоо хэмжээ'];
+    const csvRows = [header.join(',')];
+    rows.forEach(r=>{
+      csvRows.push([r.branch,r.code,r.name,r.unit,r.barcode,r.qty].map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(','));
+    });
+    const csv = '\uFEFF' + csvRows.join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `toollogo_${cycle}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Excel (CSV) татагдлаа');
+  });
+}
+async function refreshReport(){
+  const cycle = $('cycleSelect').value;
+  if(!cycle) return;
+  const rows = await apiGet('getReport', { cycle });
+  $('statBranches').textContent = new Set(rows.map(r=>r.branch)).size + '/' + branches.length;
+  $('statItems').textContent = rows.length;
+  $('statQty').textContent = rows.reduce((s,r)=>s+(parseFloat(r.qty)||0),0);
+  const el = $('reportTable');
+  if(!rows.length){ el.innerHTML = '<div class="empty">Тооллогын мэдээлэл алга байна</div>'; window._allRows=[]; return; }
+  const grouped = {};
+  rows.forEach(r => { (grouped[r.branch] = grouped[r.branch]||[]).push(r); });
+  el.innerHTML = Object.entries(grouped).map(([b, items])=>`
+    <div class="branch-group">
+      <h3>${escapeHtml(b)} — ${items.length} бараа</h3>
+      ${items.map(r=>`
+        <div class="list-item">
+          <div>
+            <div class="li-name">${escapeHtml(r.name||'(нэргүй)')}</div>
+            <div class="li-meta">${escapeHtml(r.code||'')} · ${escapeHtml(r.barcode||'')}</div>
+          </div>
+          <div class="li-qty">${r.qty} ${escapeHtml(r.unit||'')}</div>
+        </div>`).join('')}
+    </div>`).join('');
+  window._allRows = rows;
+}
+
+// ---------- INIT ----------
+async function initApp(){
+  initNav();
+  initProductHandlers();
+  initBranchHandlers();
+  initScanHandlers();
+  initReportHandlers();
+  try{
+    setConn(null, 'Шалгаж байна…');
+    await Promise.all([loadProducts(), loadBranches()]);
+    setConn('ok', 'Холбогдсон');
+    showToast('Бэлэн боллоо');
+  }catch(err){
+    setConn('bad', 'Холболтгүй');
+    showToast('Ачаалж чадсангүй: ' + err.message, true);
+  }
+}
+</script>
+</body>
+</html>
